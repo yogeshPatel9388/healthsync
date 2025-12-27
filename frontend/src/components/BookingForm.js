@@ -14,30 +14,35 @@ const BookingForm = ({ doctor, onClose }) => {
     };
   }, []);
 
-  const handleSubmit = async (e) => {
+ const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      // No need to manually get token, API instance handles it
       const appointmentData = {
         doctorId: doctor._id,
         date: new Date(formData.date).toISOString(),
         timeSlot: formData.timeSlot,
       };
 
-      await API.post("/api/appointments", appointmentData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // Changed path from "/api/appointments" to just "/appointments"
+      await API.post("/appointments", appointmentData);
 
       alert("✅ Appointment Confirmed!");
-      onClose();
-      window.location.reload();
+      
+      // Close the modal first
+      onClose(); 
+      
+      // Instead of reload, ideally you'd call a refresh function passed from props
+      // window.location.reload(); 
     } catch (err) {
+      console.error(err);
       alert(
         err.response?.data?.message || "Slot already taken or error occurred"
       );
     } finally {
-      setLoading(false);
+      // This is the most important part to fix the "stuck" button
+      setLoading(false); 
     }
   };
 
@@ -74,6 +79,7 @@ const BookingForm = ({ doctor, onClose }) => {
             </label>
             <input
               type="date"
+              min={new Date().toISOString().split("T")[0]}
               required
               className="block w-full border border-gray-200 dark:border-slate-800 rounded-2xl p-4 bg-white dark:bg-slate-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer"
               onChange={(e) =>
