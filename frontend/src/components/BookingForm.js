@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 import API from "../api/axios";
 import { X, Calendar, Clock, CheckCircle } from "lucide-react";
 
-const BookingForm = ({ doctor, onClose }) => {
+// 1. ADD 'refreshData' to your props
+const BookingForm = ({ doctor, onClose, refreshData }) => {
   const [formData, setFormData] = useState({ date: "", timeSlot: "" });
   const [loading, setLoading] = useState(false);
 
-  // UNIFORMITY FIX: Prevents the background dashboard from scrolling while booking
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => {
@@ -14,47 +14,46 @@ const BookingForm = ({ doctor, onClose }) => {
     };
   }, []);
 
- const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // No need to manually get token, API instance handles it
       const appointmentData = {
         doctorId: doctor._id,
         date: new Date(formData.date).toISOString(),
         timeSlot: formData.timeSlot,
       };
 
-      // Changed path from "/api/appointments" to just "/appointments"
-      await API.post("api/appointments", appointmentData);
+      /** * FIX 404 ERROR:
+       * Changed "/api/appointments" to "/appointments".
+       * Your API instance already knows the "/api" prefix.
+       */
+      await API.post("/api/appointments", appointmentData);
 
       alert("✅ Appointment Confirmed!");
-      
-      // Close the modal first
-      onClose(); 
-      
-      // Instead of reload, ideally you'd call a refresh function passed from props
-      // window.location.reload(); 
+
+      /** * FIX INSTANT UPDATE:
+       * Call the refresh function passed from Dashboard.js
+       * before closing the modal.
+       */
+      if (refreshData) {
+        await refreshData();
+      }
+
+      onClose();
     } catch (err) {
       console.error(err);
       alert(
         err.response?.data?.message || "Slot already taken or error occurred"
       );
     } finally {
-      // This is the most important part to fix the "stuck" button
-      setLoading(false); 
+      setLoading(false);
     }
   };
 
   return (
-    /* VISUAL FIX: 
-      1. z-[100] ensures this sits ABOVE the Navbar (z-40).
-      2. inset-0 ensures the blur/overlay covers the very top of the screen.
-    */
     <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 flex items-center justify-center p-4 z-[30] backdrop-blur-md transition-all animate-in fade-in duration-300">
-      {/* Modal Container: rounded-[2.5rem] matches your premium USP cards */}
       <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-10 max-w-lg w-full shadow-2xl border border-gray-100 dark:border-slate-800 transition-all relative overflow-hidden">
-        {/* Close Icon Button */}
         <button
           onClick={onClose}
           className="absolute top-6 right-6 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"
@@ -72,7 +71,6 @@ const BookingForm = ({ doctor, onClose }) => {
         </header>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Date Picker */}
           <div>
             <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-slate-300 mb-2 ml-1">
               <Calendar size={16} className="text-blue-600" /> Select Date
@@ -88,7 +86,6 @@ const BookingForm = ({ doctor, onClose }) => {
             />
           </div>
 
-          {/* Time Slot Selector */}
           <div>
             <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-slate-300 mb-2 ml-1">
               <Clock size={16} className="text-blue-600" /> Select Time Slot
@@ -107,7 +104,6 @@ const BookingForm = ({ doctor, onClose }) => {
                 <option value="02:00 PM">02:00 PM</option>
                 <option value="04:00 PM">04:00 PM</option>
               </select>
-              {/* Custom Chevron for select */}
               <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
                 <svg
                   className="w-5 h-5"
@@ -126,7 +122,6 @@ const BookingForm = ({ doctor, onClose }) => {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-4 pt-4">
             <button
               type="button"

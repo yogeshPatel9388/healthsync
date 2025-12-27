@@ -5,12 +5,11 @@ import BookingForm from "./BookingForm";
 import { AuthContext } from "../context/AuthContext";
 import { Search, Stethoscope, Lock, ArrowRight, Plus } from "lucide-react";
 
-const DoctorList = () => {
+// 1. Accept 'onBookingSuccess' prop from Dashboard.js
+const DoctorList = ({ onBookingSuccess }) => {
   const [doctors, setDoctors] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDoctor, setSelectedDoctor] = useState(null);
-
-  // NEW: State to control how many doctors are visible
   const [visibleCount, setVisibleCount] = useState(6);
 
   const { user } = useContext(AuthContext);
@@ -19,11 +18,12 @@ const DoctorList = () => {
   useEffect(() => {
     const fetchDoctors = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const config = token
-          ? { headers: { Authorization: `Bearer ${token}` } }
-          : {};
-        const res = await API.get("/api/users/doctors", config);
+        /**
+         * FIX: Removed manual token logic.
+         * Your axios instance handles Interceptors for you.
+         * FIX: Removed "/api" because baseURL already includes it.
+         */
+        const res = await API.get("/api/users/doctors");
         setDoctors(res.data);
       } catch (err) {
         console.error("Error fetching doctors.");
@@ -46,7 +46,6 @@ const DoctorList = () => {
       doc.specialization.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // NEW: Function to show more doctors
   const handleShowMore = () => {
     setVisibleCount((prevCount) => prevCount + 6);
   };
@@ -66,13 +65,13 @@ const DoctorList = () => {
             className="block w-full pl-12 pr-4 py-3.5 border border-gray-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all shadow-sm"
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setVisibleCount(6); // Reset count when searching
+              setVisibleCount(6);
             }}
           />
         </div>
       </div>
 
-      {/* Doctor Grid (Sliced based on visibleCount) */}
+      {/* Doctor Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         {filteredDoctors.length > 0 ? (
           filteredDoctors.slice(0, visibleCount).map((doc) => (
@@ -125,7 +124,7 @@ const DoctorList = () => {
         )}
       </div>
 
-      {/* NEW: Load More Button */}
+      {/* Load More Button */}
       {filteredDoctors.length > visibleCount && (
         <div className="flex justify-center pt-8">
           <button
@@ -141,10 +140,12 @@ const DoctorList = () => {
         </div>
       )}
 
+      {/* 2. PASS THE PROP DOWN TO BOOKINGFORM */}
       {selectedDoctor && user && (
         <BookingForm
           doctor={selectedDoctor}
           onClose={() => setSelectedDoctor(null)}
+          refreshData={onBookingSuccess}
         />
       )}
     </div>
