@@ -26,7 +26,7 @@ const BookingForm = ({ doctor, onClose }) => {
       };
 
       // Changed path from "/api/appointments" to just "/appointments"
-      await API.post("/appointments", appointmentData);
+      await API.post("api/appointments", appointmentData);
 
       alert("✅ Appointment Confirmed!");
       
