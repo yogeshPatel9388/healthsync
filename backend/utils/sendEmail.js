@@ -10,14 +10,16 @@ const sendEmail = async (to, subject, text) => {
   try {
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
-      port: 465, // Secure port for SSL
-      secure: true,
+      port: 587, // Secure port for SSL
+      pool: true, // ✅ Added pooling for better performance with dual emails
+      secure: false,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
       tls: {
         // Prevents failure on local networks with self-signed certificates
+        ciphers: "SSLv3",
         rejectUnauthorized: false,
       },
     });

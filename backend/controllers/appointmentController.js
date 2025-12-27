@@ -4,8 +4,8 @@ const sendEmail = require("../utils/sendEmail");
 
 /**
  * BOOK APPOINTMENT
- * Handles concurrency and database saving immediately.
- * Emails are moved to the background to prevent frontend timeouts.
+ * Optimized for Render: Response is sent immediately, 
+ * and emails are processed in a separate background execution context.
  */
 exports.bookAppointment = async (req, res) => {
   try {
@@ -35,58 +35,48 @@ exports.bookAppointment = async (req, res) => {
 
     await newAppointment.save();
 
-    /** * OPTIMIZATION: Send response to frontend IMMEDIATELY.
-     * This prevents the "Confirming..." button from getting stuck while waiting for email servers.
+    /** * SUCCESS RESPONSE: Sent immediately to the frontend.
+     * This closes the modal and stops the "Confirming..." spinner.
      */
     res.status(201).json(newAppointment);
 
-    // 3. Trigger Dual Email Confirmations in the Background
-    // We do NOT 'await' this block so the response above can finish instantly.
+    /**
+     * 3. BACKGROUND EMAIL PROCESS
+     * We capture necessary data in variables before starting the async block
+     * to ensure the data remains available even after the main request finishes.
+     */
+    const patientEmail = req.user.email;
+    const patientName = req.user.name;
+
     (async () => {
       try {
         const doctor = await User.findById(doctorId);
-        const patientEmail = req.user.email;
-        const patientName = req.user.name;
+        if (!doctor || !doctor.email) {
+            throw new Error("Doctor email not found for notification.");
+        }
+
         const formattedDate = new Date(date).toLocaleDateString();
 
         // --- EMAIL TO PATIENT ---
         const patientSubject = "Appointment Confirmed - HealthSync";
-        const patientText = `Hello ${patientName},
-
-Your appointment with ${doctor.name} has been successfully scheduled.
-
-Details:
-Date: ${formattedDate}
-Time: ${timeSlot}
-
-Best regards,
-HealthSync Hospital Team`;
+        const patientText = `Hello ${patientName}, Your appointment with ${doctor.name} has been successfully scheduled. Details: Date: ${formattedDate}, Time: ${timeSlot}.`;
 
         await sendEmail(patientEmail, patientSubject, patientText);
 
         // --- EMAIL TO DOCTOR ---
         const doctorSubject = "New Appointment Scheduled - HealthSync";
-        const doctorText = `Hello ${doctor.name},
-
-A new appointment has been scheduled with you.
-Patient Name: ${patientName}
-Date: ${formattedDate}
-Time: ${timeSlot}
-
-Best regards,
-HealthSync System Notification`;
+        const doctorText = `Hello ${doctor.name}, A new appointment has been scheduled with you. Patient Name: ${patientName}, Date: ${formattedDate}, Time: ${timeSlot}.`;
 
         await sendEmail(doctor.email, doctorSubject, doctorText);
 
-        console.log(
-          `✅ Background emails sent for booking: ${newAppointment._id}`
-        );
+        console.log(`✅ Dual Emails successfully triggered in background for: ${newAppointment._id}`);
       } catch (emailErr) {
-        console.error("Background email delivery failed:", emailErr.message);
+        // Logs specifically to Render console for debugging
+        console.error("❌ Background Email System Error:", emailErr.message);
       }
     })();
+
   } catch (err) {
-    // Only send error if the success response hasn't been sent yet
     if (!res.headersSent) {
       res.status(500).json({ message: "Server Error", error: err.message });
     }
@@ -95,6 +85,7 @@ HealthSync System Notification`;
 
 /**
  * GET MY APPOINTMENTS
+ * Populates doctor and patient names for the UI.
  */
 exports.getMyAppointments = async (req, res) => {
   try {
@@ -115,23 +106,18 @@ exports.getMyAppointments = async (req, res) => {
 
 /**
  * CANCEL APPOINTMENT
- * Includes ownership check to ensure only the right patient/doctor can delete.
  */
 exports.cancelAppointment = async (req, res) => {
   try {
     const appointment = await Appointment.findById(req.params.id);
 
-    if (!appointment)
-      return res.status(404).json({ message: "Appointment not found" });
+    if (!appointment) return res.status(404).json({ message: "Not found" });
 
-    // Authorization: Ensure the requester is part of this appointment
     if (
       appointment.patient.toString() !== req.user.id &&
       appointment.doctor.toString() !== req.user.id
     ) {
-      return res
-        .status(401)
-        .json({ message: "Not authorized to cancel this appointment" });
+      return res.status(401).json({ message: "Not authorized" });
     }
 
     await appointment.deleteOne();
