@@ -13,7 +13,7 @@ const Dashboard = () => {
   const fetchAppointments = useCallback(async () => {
     try {
       // FIX: Removed "/api" because your axios instance handles the baseURL
-      const res = await API.get("/appointments");
+      const res = await API.get("/api/appointments");
       setAppointments(res.data);
     } catch (err) {
       console.error("Error fetching appointments:", err);
