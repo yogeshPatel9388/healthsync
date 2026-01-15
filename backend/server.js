@@ -30,6 +30,9 @@ const appointmentRoutes = require("./routes/appointmentRoutes");
 const userRoutes = require("./routes/userRoutes");
 
 // Use Routes
+app.get("/api/health", (req, res) => {
+  res.status(200).send("Server is awake.");
+});
 app.use("/api/auth", authRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/users", userRoutes);
